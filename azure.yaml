@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: voice-live-avatar
+metadata:
+  template: voice-live-avatar@0.0.1-beta
+
+services:
+  web:
+    project: .
+    language: docker
+    host: containerapp
+    docker:
+      path: ./Dockerfile
