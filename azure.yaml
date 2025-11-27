@@ -7,7 +7,6 @@ metadata:
 services:
   web:
     project: .
-    language: docker
     host: containerapp
     docker:
       path: ./Dockerfile
