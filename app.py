@@ -6,6 +6,8 @@ from aiohttp import web
 from azure.ai.agents.aio import AgentsClient
 from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 import logging
+from azure.search.documents.aio import SearchClient
+from azure.core.credentials import AzureKeyCredential
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,10 @@ AI_SERVICE_ENDPOINT = os.environ.get(
 AZURE_FOUNDRY_PROJECT_NAME = os.environ.get(
     "AZURE_FOUNDRY_PROJECT_NAME", "_project"
 )  # Default project name if not set
+
+AZURE_SEARCH_ENDPOINT = os.environ.get("AZURE_SEARCH_ENDPOINT", "")
+AZURE_SEARCH_KEY = os.environ.get("AZURE_SEARCH_KEY", "")
+AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX", "")
 
 
 async def index(request):
@@ -443,9 +449,70 @@ async def config(request):
     }
     return web.Response(text=json.dumps(config))
 
+# Add this new function before the config function (around line 410)
+async def search_knowledge_base(request):
+    """Handle search requests from the frontend"""
+    try:
+        data = await request.json()
+        query = data.get("query", "")
+        content_field = data.get("content_field", "chunk")
+        identifier_field = data.get("identifier_field", "chunk_id")
+        top = data.get("top", 5)
+        
+        if not query:
+            return web.Response(text=json.dumps({"error": "Query is required"}), status=400, content_type="application/json")
+        
+        if not AZURE_SEARCH_ENDPOINT or not AZURE_SEARCH_KEY or not AZURE_SEARCH_INDEX:
+            return web.Response(
+                text=json.dumps({"error": "Azure Search is not configured on the server"}),
+                status=503,
+                content_type="application/json"
+            )
+        
+        # Create search client
+        search_client = SearchClient(
+            endpoint=AZURE_SEARCH_ENDPOINT,
+            index_name=AZURE_SEARCH_INDEX,
+            credential=AzureKeyCredential(AZURE_SEARCH_KEY)
+        )
+        
+        # Perform search
+        search_results = await search_client.search(
+            search_text=query,
+            top=top,
+            query_type="semantic",
+            semantic_configuration_name="default",
+            select=[content_field, identifier_field]
+        )
+        
+        # Format results
+        results = []
+        async for result in search_results:
+            results.append({
+                "identifier": result.get(identifier_field, ""),
+                "content": result.get(content_field, "")
+            })
+        
+        await search_client.close()
+        
+        return web.Response(
+            text=json.dumps({"results": results}),
+            content_type="application/json"
+        )
+        
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        return web.Response(
+            text=json.dumps({"error": str(e)}),
+            status=500,
+            content_type="application/json"
+        )
+
+
 
 app = web.Application()
 app.router.add_get("/", index)
+app.router.add_post("/api/search", search_knowledge_base) 
 app.router.add_get("/{path_info:.*}", static)
 app.router.add_get("/config", config)
 

@@ -85,8 +85,8 @@ module containerApp './core/host/container-app.bicep' = {
     tags: union(tags, { 'azd-service-name': 'web' })
     containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
     containerRegistryName: containerRegistry.outputs.name
-    containerCpuCoreCount: '1.0'
-    containerMemory: '2Gi'
+    containerCpuCoreCount: '2.0'
+    containerMemory: '4Gi'
     containerName: 'voice-live-avatar'
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
     targetPort: 3000

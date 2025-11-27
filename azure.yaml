@@ -7,6 +7,9 @@ metadata:
 services:
   web:
     project: .
+    language: js
     host: containerapp
     docker:
       path: ./Dockerfile
+      context: .
+      remoteBuild: true

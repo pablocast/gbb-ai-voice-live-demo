@@ -113,8 +113,8 @@ const predefinedTools = [
         additionalProperties: false,
       },
       description:
-        "Search the knowledge base. The knowledge base is in English, translate to and from English if " +
-        "needed. Results are formatted as a source name first in square brackets, followed by the text " +
+        "Search the knowledge base. The knowledge base is in portuguese" +
+        "Results are formatted as a source name first in square brackets, followed by the text " +
         "content, and a line with '-----' at the end of each result.",
     } as ToolDeclaration,
     enabled: true,
@@ -319,6 +319,80 @@ const availableVoices = [
     id: "en-us-jenny:DragonHDLatestNeural",
     name: "DragonHDLatestNeural, Jenny (HD)",
   },
+  // === START: Custom Voice Additions - Portuguese (Brazil) ===
+  {
+    id: "pt-BR-FranciscaNeural",
+    name: "Francisca Neural - PT-BR Female",
+  },
+  {
+    id: "pt-BR-AntonioNeural",
+    name: "Antonio Neural - PT-BR Male",
+  },
+  {
+    id: "pt-BR-MacerioMultilingualNeural4",
+    name: "Macerio Multilingual Neural - PT-BR Male",
+  },
+  {
+    id: "pt-BR-ThalitaMultilingualNeural4",
+    name: "Thalita Multilingual Neural - PT-BR Female",
+  },
+  {
+    id: "pt-BR-BrendaNeural",
+    name: "Brenda Neural - PT-BR Female",
+  },
+  {
+    id: "pt-BR-DonatoNeural",
+    name: "Donato Neural - PT-BR Male",
+  },
+  {
+    id: "pt-BR-ElzaNeural",
+    name: "Elza Neural - PT-BR Female",
+  },
+  {
+    id: "pt-BR-FabioNeural",
+    name: "Fabio Neural - PT-BR Male",
+  },
+  {
+    id: "pt-BR-GiovannaNeural",
+    name: "Giovanna Neural - PT-BR Female",
+  },
+  {
+    id: "pt-BR-HumbertoNeural",
+    name: "Humberto Neural - PT-BR Male",
+  },
+  {
+    id: "pt-BR-JulioNeural",
+    name: "Julio Neural - PT-BR Male",
+  },
+  {
+    id: "pt-BR-LeilaNeural",
+    name: "Leila Neural - PT-BR Female",
+  },
+  {
+    id: "pt-BR-LeticiaNeural",
+    name: "Leticia Neural - PT-BR Child Female",
+  },
+  {
+    id: "pt-BR-ManuelaNeural",
+    name: "Manuela Neural - PT-BR Female",
+  },
+  {
+    id: "pt-BR-NicolauNeural",
+    name: "Nicolau Neural - PT-BR Male",
+  },
+  {
+    id: "pt-BR-ThalitaNeural",
+    name: "Thalita Neural - PT-BR Female",
+  },
+  {
+    id: "pt-BR-ValerioNeural",
+    name: "Valerio Neural - PT-BR Male",
+  },
+  {
+    id: "pt-BR-YaraNeural",
+    name: "Yara Neural - PT-BR Female",
+  },
+  // === END: Custom Voice Additions - Portuguese (Brazil) ===
   {
     id: "ja-jp-masaru:DragonHDLatestNeural",
     name: "DragonHDLatestNeural, Masaru (HD)",
@@ -343,6 +417,8 @@ const availableVoices = [
   { id: "mt-MT-JosephNeural", name: "Joseph (Maltese)" },
   { id: "zh-cn-xiaoxiao2:DragonHDFlashLatestNeural", name: "Xiaoxiao2 HDFlash" },
   { id: "zh-cn-yunyi:DragonHDFlashLatestNeural", name: "Yunyi HDFlash" },
+  
+  
   {
     id: "alloy",
     name: "Alloy (OpenAI)",
