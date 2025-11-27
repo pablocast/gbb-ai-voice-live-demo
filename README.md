@@ -1,4 +1,4 @@
-# <img src="images/ai-foundry.png" alt="Azure Foundry" style="width:70px;height:40px;"/> # Microsoft Azure Voice Live with Avatar Sample
+# <img src="images/ai-foundry.png" alt="Azure Foundry" style="width:70px;height:40px;"/> Microsoft Azure Voice Live with Avatar Sample
 
 This sample demonstrates the usage of Azure Voice Live API with avatar capabilities, enabling real-time voice conversations with AI-powered avatars.
 
