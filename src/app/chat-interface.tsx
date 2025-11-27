@@ -2188,6 +2188,12 @@ const ChatInterface = () => {
                           disabled={isConnected}
                         />
                         <Input
+                          placeholder="Semantic Configuration"
+                          value={searchSemanticConfig}
+                          onChange={(e) => setSearchSemanticConfig(e.target.value)}
+                          disabled={isConnected}
+                        />
+                        <Input
                           placeholder="Search Content Field (default: chunk)"
                           value={searchContentField}
                           onChange={(e) =>
@@ -2201,12 +2207,6 @@ const ChatInterface = () => {
                           onChange={(e) =>
                             setSearchIdentifierField(e.target.value)
                           }
-                          disabled={isConnected}
-                        />
-                        <Input
-                          placeholder="Semantic Configuration (default: default)"
-                          value={searchSemanticConfig}
-                          onChange={(e) => setSearchSemanticConfig(e.target.value)}
                           disabled={isConnected}
                         />
                       </div>
