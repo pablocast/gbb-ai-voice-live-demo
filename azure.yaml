@@ -7,9 +7,25 @@ metadata:
 services:
   web:
     project: .
-    language: python
+    language: py
     host: containerapp
     docker:
-      path: ./Dockerfile
-      context: .
       remoteBuild: true
+hooks:
+  postdeploy:
+    posix:
+      shell: sh
+      run: |
+        echo "Deployment complete"
+        echo ""
+        echo "🚀 Application deployed successfully!"
+        echo "📱 Website URL: $WEBSITE_URL"
+        echo ""
+    windows:
+      shell: pwsh
+      run: |
+        Write-Host "Deployment complete"
+        Write-Host ""
+        Write-Host "🚀 Application deployed successfully!" -ForegroundColor Green
+        Write-Host "📱 Website URL: $env:WEBSITE_URL" -ForegroundColor Cyan
+        Write-Host ""

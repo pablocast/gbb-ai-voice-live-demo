@@ -1,118 +1,100 @@
-targetScope = 'subscription'
+// ------------------
+//    PARAMETERS
+// ------------------
 
-@minLength(1)
-@maxLength(64)
-@description('Name of the environment used to generate a unique short name for resources')
+@allowed(['Consumption', 'D4', 'D8', 'D16', 'D32', 'E4', 'E8', 'E16', 'E32', 'NC24-A100', 'NC48-A100', 'NC96-A100'])
+param azureContainerAppsWorkloadProfile string
 param environmentName string
 
-@minLength(1)
-@description('Primary location for all resources')
-param location string
+@description('Used by azd for containerapps deployment')
+param webAppExists bool
 
-@description('Id of the user or app to assign application roles')
-param principalId string = ''
-
-// Optional parameters
-@description('Name of the resource group')
-param resourceGroupName string = ''
-
-@description('Name of the container registry')
-param containerRegistryName string = ''
-
-@description('Name of the container apps environment')
-param containerAppsEnvironmentName string = ''
-
-@description('Name of the container app')
-param containerAppName string = ''
-
-@description('Name of the log analytics workspace')
-param logAnalyticsName string = ''
-
-// Generate unique names
-var abbrs = loadJsonContent('./abbreviations.json')
-var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+// ------------------
+//    VARIABLES
+// ------------------
+param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
+var resourceSuffix = uniqueString(subscription().id, resourceGroup().id, deploymentTimestamp)
 var tags = { 'azd-env-name': environmentName }
 
-// Resource Group
-resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: !empty(resourceGroupName) ? resourceGroupName : '${abbrs.resourcesResourceGroups}${environmentName}'
-  location: location
-  tags: tags
-}
+// ------------------
+//    RESOURCES
+// ------------------
 
-// Log Analytics Workspace
-module logAnalytics './core/monitor/loganalytics.bicep' = {
-  name: 'loganalytics'
-  scope: rg
+// 1. Log Analytics Workspace
+module lawModule './core/monitor/workspaces.bicep' = {
+  name: 'lawModule'
   params: {
-    name: !empty(logAnalyticsName) ? logAnalyticsName : '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
-    location: location
-    tags: tags
+    resourceSuffix: resourceSuffix
   }
 }
 
-// Container Registry
-module containerRegistry './core/host/container-registry.bicep' = {
-  name: 'container-registry'
-  scope: rg
+// 2. Application Insights
+module appInsightsModule './core/monitor/appinsights.bicep' = {
+  name: 'appInsightsModule'
   params: {
-    name: !empty(containerRegistryName) ? containerRegistryName : '${abbrs.containerRegistryRegistries}${resourceToken}'
-    location: location
-    tags: tags
-    adminUserEnabled: true
+    lawId: lawModule.outputs.id
+    customMetricsOptedInType: 'WithDimensions'
+    resourceSuffix: resourceSuffix
   }
 }
 
-// Container Apps Environment
-module containerAppsEnvironment './core/host/container-apps-environment.bicep' = {
-  name: 'container-apps-environment'
-  scope: rg
+
+// Azure container apps resources
+// User-assigned identity for pulling images from ACR
+var acaIdentityName = 'aca-identity-${resourceSuffix}'
+module acaIdentity './core/security/aca-identity.bicep' = {
+  name: 'aca-identity'
+  scope: resourceGroup()
   params: {
-    name: !empty(containerAppsEnvironmentName) ? containerAppsEnvironmentName : '${abbrs.appManagedEnvironments}${resourceToken}'
-    location: location
-    tags: tags
-    logAnalyticsWorkspaceName: logAnalytics.outputs.name
+    identityName: acaIdentityName
+    location: resourceGroup().location
   }
 }
 
-// Container App
-module containerApp './core/host/container-app.bicep' = {
-  name: 'container-app'
-  scope: rg
+module containerApps './core/host/container-apps.bicep' = {
+  name: 'container-apps'
+  scope: resourceGroup()
   params: {
-    name: !empty(containerAppName) ? containerAppName : '${abbrs.appContainerApps}${resourceToken}'
-    location: location
+    name: 'app'
+    tags: tags
+    location: resourceGroup().location
+    workloadProfile: azureContainerAppsWorkloadProfile
+    containerAppsEnvironmentName: '${environmentName}-aca-env-${resourceSuffix}'
+    containerRegistryName: 'containerregistry${resourceSuffix}'
+    logAnalyticsWorkspaceResourceId: lawModule.outputs.id
+  }
+}
+
+// Container Apps for the web application (Python Quart app with JS frontend)
+module acaBackend './core/host/container-app-upsert.bicep' = {
+  name: 'aca-web'
+  scope: resourceGroup()
+  dependsOn: [
+    containerApps
+    acaIdentity
+  ]
+  params: {
+    name: 'webapp-backend-${resourceSuffix}'
+    location: resourceGroup().location
+    identityName: acaIdentityName
+    exists: webAppExists
+    workloadProfile: azureContainerAppsWorkloadProfile
+    containerRegistryName: containerApps.outputs.registryName
+    containerAppsEnvironmentName: containerApps.outputs.environmentName
+    identityType: 'UserAssigned'
     tags: union(tags, { 'azd-service-name': 'web' })
-    containerAppsEnvironmentName: containerAppsEnvironment.outputs.name
-    containerRegistryName: containerRegistry.outputs.name
+    targetPort: 3000
     containerCpuCoreCount: '2.0'
     containerMemory: '4Gi'
-    containerName: 'voice-live-avatar'
-    containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-    targetPort: 3000
-    externalIngress: true
   }
 }
 
-// Assign Container Registry pull role to Container App
-module containerRegistryAccess './core/security/role.bicep' = {
-  name: 'container-registry-access'
-  scope: rg
-  params: {
-    principalId: containerApp.outputs.identityPrincipalId
-    roleDefinitionId: '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull
-    principalType: 'ServicePrincipal'
-  }
-}
 
-// Outputs
-output AZURE_LOCATION string = location
-output AZURE_TENANT_ID string = tenant().tenantId
-output AZURE_RESOURCE_GROUP string = rg.name
 
-output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.outputs.loginServer
-output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.outputs.name
+// ------------------
+//    OUTPUTS
+// ------------------
 
-output AZURE_CONTAINER_APP_NAME string = containerApp.outputs.name
-output AZURE_CONTAINER_APP_FQDN string = containerApp.outputs.fqdn
-output AZURE_CONTAINER_APP_URL string = 'https://${containerApp.outputs.fqdn}'
+output logAnalyticsWorkspaceId string = lawModule.outputs.customerId
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
+output WEBSITE_URL string = acaBackend.outputs.uri
