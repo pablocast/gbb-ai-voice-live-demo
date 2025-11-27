@@ -20,11 +20,6 @@ AZURE_FOUNDRY_PROJECT_NAME = os.environ.get(
     "AZURE_FOUNDRY_PROJECT_NAME", "_project"
 )  # Default project name if not set
 
-AZURE_SEARCH_ENDPOINT = os.environ.get("AZURE_SEARCH_ENDPOINT", "")
-AZURE_SEARCH_KEY = os.environ.get("AZURE_SEARCH_KEY", "")
-AZURE_SEARCH_INDEX = os.environ.get("AZURE_SEARCH_INDEX", "")
-
-
 async def index(request):
     return web.FileResponse("out/index.html")
 
@@ -452,17 +447,21 @@ async def config(request):
 # Add this new function before the config function (around line 410)
 async def search_knowledge_base(request):
     """Handle search requests from the frontend"""
+    search_key = request.headers.get("X-Search-Key")
+    search_endpoint = request.headers.get("X-Search-Endpoint")
+    search_index = request.headers.get("X-Search-Index")
     try:
         data = await request.json()
         query = data.get("query", "")
         content_field = data.get("content_field", "chunk")
         identifier_field = data.get("identifier_field", "chunk_id")
         top = data.get("top", 5)
+        semantic_configuration = data.get("semantic_configuration", "default")
         
         if not query:
             return web.Response(text=json.dumps({"error": "Query is required"}), status=400, content_type="application/json")
-        
-        if not AZURE_SEARCH_ENDPOINT or not AZURE_SEARCH_KEY or not AZURE_SEARCH_INDEX:
+
+        if not search_endpoint or not search_key or not search_index:
             return web.Response(
                 text=json.dumps({"error": "Azure Search is not configured on the server"}),
                 status=503,
@@ -471,9 +470,9 @@ async def search_knowledge_base(request):
         
         # Create search client
         search_client = SearchClient(
-            endpoint=AZURE_SEARCH_ENDPOINT,
-            index_name=AZURE_SEARCH_INDEX,
-            credential=AzureKeyCredential(AZURE_SEARCH_KEY)
+            endpoint=search_endpoint,
+            index_name=search_index,
+            credential=AzureKeyCredential(search_key)
         )
         
         # Perform search
@@ -481,7 +480,7 @@ async def search_knowledge_base(request):
             search_text=query,
             top=top,
             query_type="semantic",
-            semantic_configuration_name="default",
+            semantic_configuration_name=semantic_configuration,
             select=[content_field, identifier_field]
         )
         

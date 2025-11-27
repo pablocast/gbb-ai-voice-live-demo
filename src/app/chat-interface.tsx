@@ -530,6 +530,7 @@ const ChatInterface = () => {
   const [searchContentField, setSearchContentField] = useState("chunk");
   const [searchIdentifierField, setSearchIdentifierField] =
     useState("chunk_id");
+  const [searchSemanticConfig, setSearchSemanticConfig] = useState("default");
   const [recognitionLanguage, setRecognitionLanguage] = useState("auto");
   const [phraseList, setPhraseList] = useState<string[]>([]);
   const [customSpeechModels, setCustomSpeechModels] = useState<Record<string, string>>({});
@@ -1026,9 +1027,9 @@ const ChatInterface = () => {
           });
           await clientRef.current?.generateResponse();
         } else if (item.functionName === "search") {
-          const query = JSON.parse(item.arguments).query;
-          console.log("Search query:", query);
-          if (searchClientRef.current) {
+            const query = JSON.parse(item.arguments).query;
+            console.log("Search query:", query);
+            
             setMessages((prevMessages) => [
               ...prevMessages,
               {
@@ -1036,30 +1037,57 @@ const ChatInterface = () => {
                 content: `Searching [${query}]...`,
               },
             ]);
-            const searchResults = await searchClientRef.current.search(query, {
-              top: 5,
-              queryType: "semantic",
-              semanticSearchOptions: {
-                configurationName: "default", // this is hardcoded for now.
-              },
-              select: [searchContentField, searchIdentifierField],
-            });
-            let resultText = "";
-            for await (const result of searchResults.results) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const document = result.document as any;
-              resultText += `[${document[searchIdentifierField]}]: ${document[searchContentField]}\n-----\n`;
+            
+            try {
+              // Call backend search endpoint instead of direct Azure Search
+              const response = await fetch("/api/search", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Search-Key": searchApiKey,
+                  "X-Search-Endpoint": searchEndpoint,
+                  "X-Search-Index": searchIndex,
+                },
+                body: JSON.stringify({
+                  query: query,
+                  content_field: searchContentField,
+                  identifier_field: searchIdentifierField,
+                  semantic_config: searchSemanticConfig,
+                  top: 5
+                }),
+              });
+              
+              if (!response.ok) {
+                throw new Error(`Search failed: ${response.statusText}`);
+              }
+              
+              const data = await response.json();
+              
+              // Format results for the AI model
+              let resultText = "";
+              for (const result of data.results) {
+                resultText += `[${result.identifier}]: ${result.content}\n-----\n`;
+              }
+              
+              console.log("Search results:", resultText);
+              await clientRef.current?.sendItem({
+                type: "function_call_output",
+                output: resultText,
+                call_id: item.callId,
+              });
+              await clientRef.current?.generateResponse();
+            } catch (error) {
+              console.error("Search error:", error);
+              setMessages((prevMessages) => [
+                ...prevMessages,
+                {
+                  type: "error",
+                  content: `Search error: ${error}`,
+                },
+              ]);
             }
-            console.log("Search results:", resultText);
-            await clientRef.current?.sendItem({
-              type: "function_call_output",
-              output: resultText,
-              call_id: item.callId,
-            });
-            await clientRef.current?.generateResponse();
-          }
-        } else if (item.functionName === "pronunciation_assessment") {
-          const PAResult = await startPAWithStream();
+          } else if (item.functionName === "pronunciation_assessment") {
+            const PAResult = await startPAWithStream();
           console.log("Pronunciation assessment result:", PAResult);
           await clientRef.current?.sendItem({
             type: "function_call_output",
@@ -2173,6 +2201,12 @@ const ChatInterface = () => {
                           onChange={(e) =>
                             setSearchIdentifierField(e.target.value)
                           }
+                          disabled={isConnected}
+                        />
+                        <Input
+                          placeholder="Semantic Configuration (default: default)"
+                          value={searchSemanticConfig}
+                          onChange={(e) => setSearchSemanticConfig(e.target.value)}
                           disabled={isConnected}
                         />
                       </div>
