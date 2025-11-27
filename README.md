@@ -12,8 +12,8 @@ This sample demonstrates the usage of Azure Voice Live API with avatar capabilit
 
 ### Azure Resources (Required)
 - An active Azure account. [Create one for free](https://azure.microsoft.com/free/ai-services)
-- An **Azure AI Services resource** in a supported region
-  - Get your endpoint and API key from the `Keys and Endpoint` tab
+- A **Microsoft Foundry Resource** in a supported region
+  - Get your endpoint and API key from the Azure AI Services library in the `Overview` tab
   - Endpoint format: `https://<region>.api.cognitive.microsoft.com/` or `https://<custom-domain>.cognitiveservices.azure.com/`
 - (Optional) **Azure AI Search resource** - Required only if using the Search tool for knowledge base integration
   - Obtain search endpoint, API key, index name, and semantic configuration
@@ -31,108 +31,70 @@ This sample demonstrates the usage of Azure Voice Live API with avatar capabilit
   - West US 2
 
 ### For Deployment
-- **Azure Container Registry** (for cloud deployment)
-- **Azure Container Apps** (recommended hosting platform)
+- [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) installed
 
 ### For Local Development
 - Docker installed on your machine. [Get Docker](https://www.docker.com/get-started)
 
 ## Deployment to Azure (Recommended)
 
-Deploying to Azure Container Apps provides a scalable, production-ready environment with global accessibility.
+Deploy to Azure Container Apps with a single command using Azure Developer CLI (azd).
 
-### Step 1: Build the Docker Image
+### Prerequisites
 
-Navigate to the project directory and build the Docker image:
+Install Azure Developer CLI if you haven't already:
 
-```bash
-docker build -t voice-live-avatar .
+**Windows:**
+```powershell
+winget install microsoft.azd
 ```
 
-### Step 2: Create Azure Container Registry
-
-If you don't have an Azure Container Registry:
-
+**macOS:**
 ```bash
-# Login to Azure
-az login
-
-# Create a resource group
-az group create --name voice-live-rg --location eastus2
-
-# Create Azure Container Registry
-az acr create --resource-group voice-live-rg \
-  --name <your-registry-name> --sku Basic
-
-# Login to ACR
-az acr login --name <your-registry-name>
+brew tap azure/azd && brew install azd
 ```
 
-### Step 3: Push Image to Azure Container Registry
-
-Tag and push the image:
-
+**Linux:**
 ```bash
-docker tag voice-live-avatar <your-registry-name>.azurecr.io/voice-live-avatar:latest
-docker push <your-registry-name>.azurecr.io/voice-live-avatar:latest
+curl -fsSL https://aka.ms/install-azd.sh | bash
 ```
 
-### Step 4: Deploy to Azure Container Apps
+### Deploy
 
-Create and configure the Container App:
-
+1. Login to Azure:
 ```bash
-# Create Container Apps environment
-az containerapp env create \
-  --name voice-live-env \
-  --resource-group voice-live-rg \
-  --location eastus2
-
-# Deploy the container
-az containerapp create \
-  --name voice-live-app \
-  --resource-group voice-live-rg \
-  --environment voice-live-env \
-  --image <your-registry-name>.azurecr.io/voice-live-avatar:latest \
-  --target-port 3000 \
-  --ingress external \
-  --registry-server <your-registry-name>.azurecr.io \
-  --cpu 1.0 --memory 2.0Gi
+azd auth login
 ```
 
-### Step 5: (Optional) Configure Environment Variables
-
-Pre-configure the application with environment variables:
-
+2. Deploy the application:
 ```bash
-az containerapp update \
-  --name voice-live-app \
-  --resource-group voice-live-rg \
-  --set-env-vars \
-    RETURN_CONFIGS=true \
-    AI_SERVICE_ENDPOINT=<your-ai-service-endpoint> \
-    AZURE_FOUNDRY_PROJECT_NAME=<your-project-name>
+azd up
 ```
 
-### Step 6: Access Your Application
+This single command will:
+- Provision Azure Container Registry
+- Provision Azure Container Apps environment
+- Build and push the Docker image
+- Deploy the application
+- Provide you with the application URL
 
-Get the application URL:
+3. Access your application at the URL provided by `azd up` (format: `https://voice-live-app.xxx.azurecontainerapps.io`)
+
+### Update Deployment
+
+To redeploy after making changes:
 
 ```bash
-az containerapp show \
-  --name voice-live-app \
-  --resource-group voice-live-rg \
-  --query properties.configuration.ingress.fqdn \
-  --output tsv
+azd deploy
 ```
 
-Navigate to the URL in your browser (format: `https://voice-live-app.xxx.azurecontainerapps.io`)
+### Clean Up Resources
 
-### Continuous Deployment (Optional)
+To delete all Azure resources created by azd:
 
-Set up CI/CD pipelines for automated deployments:
-- [Azure Container Apps with GitHub Actions](https://learn.microsoft.com/azure/container-apps/github-actions)
-- [Azure Container Apps with Azure DevOps](https://learn.microsoft.com/azure/container-apps/azure-pipelines)
+```bash
+azd down
+```
 
 ## Local Development Setup
 
